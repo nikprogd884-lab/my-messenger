@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 const SUPABASE_URL = "https://mzziirgdhvbubiunykuj.supabase.co";
@@ -82,13 +82,23 @@ export default function App() {
       options: { data: { username } }
     });
     if (error) setAuthError(error.message);
-    else setAuthError("✅ Проверьте email для подтверждения!");
+    else setAuthError("✅ Аккаунт создан! Можете войти.");
   }
 
   async function handleLogout() {
     await supabase.auth.signOut();
     setContacts([]); setActiveContact(null); setMessages([]);
   }
+
+  const loadMessages = useCallback(async () => {
+    if (!activeContact || !user) return;
+    const { data } = await supabase
+      .from("messages")
+      .select("*")
+      .or(`and(sender_id.eq.${user.id},receiver_id.eq.${activeContact.id}),and(sender_id.eq.${activeContact.id},receiver_id.eq.${user.id})`)
+      .order("created_at", { ascending: true });
+    setMessages(data || []);
+  }, [activeContact, user]);
 
   useEffect(() => {
     if (!activeContact || !user) return;
@@ -105,17 +115,7 @@ export default function App() {
       })
       .subscribe();
     return () => subRef.current?.unsubscribe();
-  }, [activeContact, user]);
-
-  async function loadMessages() {
-    if (!activeContact || !user) return;
-    const { data } = await supabase
-      .from("messages")
-      .select("*")
-      .or(`and(sender_id.eq.${user.id},receiver_id.eq.${activeContact.id}),and(sender_id.eq.${activeContact.id},receiver_id.eq.${user.id})`)
-      .order("created_at", { ascending: true });
-    setMessages(data || []);
-  }
+  }, [activeContact, user, loadMessages]);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
@@ -309,3 +309,10 @@ const S = {
   msgInp:{flex:1,padding:"12px 16px",background:"#0f172a",border:"1.5px solid #334155",borderRadius:12,color:"#f1f5f9",fontSize:15,outline:"none"},
   sendBtn:{width:48,height:48,background:"#6366f1",border:"none",borderRadius:12,color:"#fff",fontSize:18,cursor:"pointer",transition:"opacity 0.2s"},
 };
+```
+
+Сохрани **Ctrl+S**, потом в cmd:
+```
+git add .
+git commit -m "fix eslint"
+git push
